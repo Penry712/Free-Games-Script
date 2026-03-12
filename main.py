@@ -25,36 +25,50 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
         
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        
         cursor.execute('''
-            CREATE TABLE Platform (
-                PlatformID INT PRIMARY KEY,
-                Platform VARCHAR(255)
-            );
+            CREATE TABLE IF NOT EXISTS Platform (
+                PlatformID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Platform TEXT UNIQUE
+            )
+        ''')
 
-            CREATE TABLE GameTyp (
-                TypeID INT PRIMARY KEY,
-                Type VARCHAR(255)
-            );
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS GameTyp (
+                TypeID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Type TEXT UNIQUE
+            )
+        ''')
 
-            CREATE TABLE Game (
-                GameID INT PRIMARY KEY,
-                Title VARCHAR(255),
-                Worth VARCHAR(100),
-                Thumbnail VARCHAR(255),
-                Image VARCHAR(255),
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS Game (
+                GameID INTEGER PRIMARY KEY,
+                Title TEXT,
+                Worth TEXT,
+                Thumbnail TEXT,
+                Image TEXT,
                 Description TEXT,
                 Instructions TEXT,
-                OpenGiveawayURL VARCHAR(255),
-                PublishedDate DATE,
-                EndDate DATE,
-                Users INT,
-                Status VARCHAR(50),
-                GamepowerURL VARCHAR(255),
-                PlatformID INT,
-                TypeID INT,
-                FOREIGN KEY (PlatformID) REFERENCES Platform(PlatformID),
+                OpenGiveawayURL TEXT,
+                PublishedDate TEXT,
+                EndDate TEXT,
+                Users INTEGER,
+                Status TEXT,
+                GamepowerURL TEXT,
+                TypeID INTEGER,
                 FOREIGN KEY (TypeID) REFERENCES GameTyp(TypeID)
-            );
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS GamePlatform (
+                GameID INTEGER,
+                PlatformID INTEGER,
+                PRIMARY KEY (GameID, PlatformID),
+                FOREIGN KEY (GameID) REFERENCES Game(GameID),
+                FOREIGN KEY (PlatformID) REFERENCES Platform(PlatformID)
+            )
         ''')
         
         conn.commit()
@@ -67,23 +81,51 @@ class DatabaseManager:
 
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
+        cursor.execute("PRAGMA foreign_keys = ON;")
         
         for item in giveaways_list:
-            sql = '''
-                INSERT OR REPLACE INTO giveaways 
-                (id, title, type, platforms, worth, description, gamerpower_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+            type_name = item.get('type')
+            cursor.execute('INSERT OR IGNORE INTO GameTyp (Type) VALUES (?)', (type_name,))
+            cursor.execute('SELECT TypeID FROM GameTyp WHERE Type = ?', (type_name,))
+            type_id = cursor.fetchone()[0]
+            
+            game_id = item.get('id')
+            sql_game = '''
+                INSERT OR REPLACE INTO Game 
+                (GameID, Title, Worth, Thumbnail, Image, Description, Instructions, 
+                 OpenGiveawayURL, PublishedDate, EndDate, Users, Status, GamepowerURL, TypeID)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
-            werte = (
-                item.get('id'),
+            werte_game = (
+                game_id,
                 item.get('title'),
-                item.get('type'),
-                item.get('platforms'),
                 item.get('worth'),
+                item.get('thumbnail'),
+                item.get('image'),
                 item.get('description'),
-                item.get('gamerpower_url')
+                item.get('instructions'),
+                item.get('open_giveaway_url'),
+                item.get('published_date'),
+                item.get('end_date'),
+                item.get('users'),
+                item.get('status'),
+                item.get('gamerpower_url'),
+                type_id
             )
-            cursor.execute(sql, werte)
+            cursor.execute(sql_game, werte_game)
+
+            platforms_string = item.get('platforms', '')
+            platform_list = [p.strip() for p in platforms_string.split(',') if p.strip()]
+            
+            for platform_name in platform_list:
+                cursor.execute('INSERT OR IGNORE INTO Platform (Platform) VALUES (?)', (platform_name,))
+                cursor.execute('SELECT PlatformID FROM Platform WHERE Platform = ?', (platform_name,))
+                platform_id = cursor.fetchone()[0]
+                
+                cursor.execute('''
+                    INSERT OR IGNORE INTO GamePlatform (GameID, PlatformID)
+                    VALUES (?, ?)
+                ''', (game_id, platform_id))
             
         conn.commit()
         conn.close()
@@ -96,7 +138,7 @@ if __name__ == "__main__":
     api = GamerPowerAPI()
     pc_games = api.get_pc_giveaways()
     
-    print(f" {len(pc_games)} PC-Giveaways gefunden. Speichere in SQLite...")
+    print(f" {len(pc_games)} Giveaways gefunden. Speichere in SQLite...")
     
     db = DatabaseManager()
     db.save_giveaways(pc_games)

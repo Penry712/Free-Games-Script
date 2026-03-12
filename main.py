@@ -5,7 +5,7 @@ class GamerPowerAPI:
     def __init__(self):
         self.base_url = "https://gamerpower.com/api"
 
-    def get_pc_giveaways(self):
+    def get_giveaways(self):
         url = f"{self.base_url}/giveaways"
         
         try:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     print("Hole Daten von der GamerPower API...")
     
     api = GamerPowerAPI()
-    pc_games = api.get_pc_giveaways()
+    pc_games = api.get_giveaways()
     
     print(f" {len(pc_games)} Giveaways gefunden. Speichere in SQLite...")
     

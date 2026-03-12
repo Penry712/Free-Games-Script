@@ -26,15 +26,35 @@ class DatabaseManager:
         cursor = conn.cursor()
         
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS giveaways (
-                id INTEGER PRIMARY KEY,
-                title TEXT,
-                type TEXT,
-                platforms TEXT,
-                worth TEXT,
-                description TEXT,
-                gamerpower_url TEXT
-            )
+            CREATE TABLE Platform (
+                PlatformID INT PRIMARY KEY,
+                Platform VARCHAR(255)
+            );
+
+            CREATE TABLE GameTyp (
+                TypeID INT PRIMARY KEY,
+                Type VARCHAR(255)
+            );
+
+            CREATE TABLE Game (
+                GameID INT PRIMARY KEY,
+                Title VARCHAR(255),
+                Worth VARCHAR(100),
+                Thumbnail VARCHAR(255),
+                Image VARCHAR(255),
+                Description TEXT,
+                Instructions TEXT,
+                OpenGiveawayURL VARCHAR(255),
+                PublishedDate DATE,
+                EndDate DATE,
+                Users INT,
+                Status VARCHAR(50),
+                GamepowerURL VARCHAR(255),
+                PlatformID INT,
+                TypeID INT,
+                FOREIGN KEY (PlatformID) REFERENCES Platform(PlatformID),
+                FOREIGN KEY (TypeID) REFERENCES GameTyp(TypeID)
+            );
         ''')
         
         conn.commit()
